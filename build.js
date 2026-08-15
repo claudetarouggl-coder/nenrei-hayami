@@ -7,7 +7,7 @@ const { eto, etoYomi, wareki, ageInYear, kazoe, schoolYears, YAKU, CHOJU } = req
 const { EVENT_GOODS } = require("./lib/affiliates");
 
 const BASE = "https://claudetarouggl-coder.github.io/nenrei-hayami/";
-const GA_ID = ""; // GA4プロパティ作成後に設定して再ビルド
+const GA_ID = "G-CDFZWP83ZH";
 const OUT = path.join(__dirname, "docs");
 
 const jstNow = new Date(Date.now() + 540 * 60000);
