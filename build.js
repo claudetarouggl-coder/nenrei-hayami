@@ -105,6 +105,7 @@ function writePage(relPath, html) {
 }
 
 const columnLinks = depth => `<h2>あわせて読む</h2><div class="links">
+<a href="${rel(depth, "gakunen/")}">学年早見表 ${THIS_YEAR}年度</a>
 <a href="${rel(depth, "column/hayaumare/")}">早生まれとは？学年の区切り</a>
 <a href="${rel(depth, "column/kazoedoshi/")}">数え年と満年齢の違い</a>
 <a href="${rel(depth, "column/yakudoshi/")}">厄年早見表 ${THIS_YEAR}・${THIS_YEAR + 1}</a></div>`;
@@ -275,6 +276,61 @@ ${yakuTable(THIS_YEAR + 1)}
 ${columnLinks(2)}`);
 }
 
+// ---- 学年早見表 ----
+const GAKUNEN_ROWS = [
+  { label: "年少（3歳児クラス）", offset: 4 },
+  { label: "年中（4歳児クラス）", offset: 5 },
+  { label: "年長（5歳児クラス）", offset: 6 },
+  { label: "小学1年", offset: 7 },
+  { label: "小学2年", offset: 8 },
+  { label: "小学3年", offset: 9 },
+  { label: "小学4年", offset: 10 },
+  { label: "小学5年", offset: 11 },
+  { label: "小学6年", offset: 12, gradKey: "elemOut" },
+  { label: "中学1年", offset: 13 },
+  { label: "中学2年", offset: 14 },
+  { label: "中学3年", offset: 15, gradKey: "jhsOut" },
+  { label: "高校1年", offset: 16 },
+  { label: "高校2年", offset: 17 },
+  { label: "高校3年", offset: 18, gradKey: "hsOut" },
+  { label: "大学1年", offset: 19 },
+  { label: "大学2年", offset: 20 },
+  { label: "大学3年", offset: 21 },
+  { label: "大学4年", offset: 22, gradKey: "uniOut" },
+];
+
+function buildGakunen() {
+  const rows = GAKUNEN_ROWS.map(({ label, offset, gradKey }) => {
+    const c = THIS_YEAR - offset;
+    const age = THIS_YEAR - c;
+    const grad = gradKey ? `${schoolYears(c)[gradKey]}年3月` : "—";
+    return `<tr><td>${esc(label)}</td><td>${c}年4月2日〜${c + 1}年4月1日</td><td>${age}歳</td><td>${grad}</td>` +
+      `<td><a href="${rel(1, `y${c}/`)}">${c}年生まれ</a> / <a href="${rel(1, `y${c + 1}/`)}">${c + 1}年早生まれ</a></td></tr>`;
+  }).join("\n");
+
+  const body = `
+<section class="feature"><p>${THIS_YEAR}年度（${THIS_YEAR}年4月〜${THIS_YEAR + 1}年3月）の学年早見表です。生まれ年月日（4月2日〜翌4月1日区切り）から、今の学年がすぐわかります。</p></section>
+<div class="tbl"><table>
+<thead><tr><th>学年</th><th>生まれ（西暦）</th><th>年度内に迎える年齢</th><th>卒業予定年</th><th>生まれ年ページ</th></tr></thead>
+<tbody>${rows}</tbody></table></div>
+<div class="note"><p>各学年には、上記の生まれ年の4月2日〜12月31日生まれに加えて、<strong>翌年1月1日〜4月1日生まれ（早生まれ）</strong>も含まれます。詳しくは<a href="${rel(1, "column/hayaumare/")}">早生まれとは？学年の区切り</a>をご覧ください。</p></div>
+<section class="faq"><h2>よくある質問</h2><dl>
+<dt>今年度の小学1年生は何年生まれ？</dt><dd>${THIS_YEAR - 7}年4月2日〜${THIS_YEAR - 6}年4月1日生まれです。</dd>
+<dt>学年はいつの時点で決まりますか？</dt><dd>4月1日時点で満6歳に達しているかどうかで、その春の小学校入学が決まります。誕生日の前日に年を取る法律上の扱いのため、4月1日生まれまでが1つ上の学年になります。</dd>
+<dt>浪人・留年した場合は？</dt><dd>この表は現役で進学した場合の目安です。浪人・留年があると学年がずれます。</dd>
+</dl></section>
+${columnLinks(1)}`;
+
+  writePage("gakunen/index.html", shell({
+    path: "gakunen/", depth: 1,
+    title: `学年早見表【${THIS_YEAR}年度】小学校・中学校・高校・大学の学年がわかる`,
+    desc: `${THIS_YEAR}年度（${THIS_YEAR}年4月〜${THIS_YEAR + 1}年3月）の学年早見表。年少・年中・年長から小学校・中学校・高校・大学4年まで、生まれ年ごとの現在の学年と卒業予定年がひと目でわかります。早生まれ（1月1日〜4月1日生まれ）の学年もあわせて確認できます。`,
+    h1: `学年早見表【${THIS_YEAR}年度】`,
+    breadcrumbs: [{ name: "年齢早見表", path: "" }, { name: "学年早見表", path: "gakunen/" }],
+    body,
+  }));
+}
+
 // ---- トップページ ----
 function buildHome() {
   const rows = [...YEARS].reverse().map(y => {
@@ -330,6 +386,7 @@ ${emittedUrls.map(u => `  <url><loc>${u}</loc><lastmod>${TODAY_STR}</lastmod></u
 fs.rmSync(OUT, { recursive: true, force: true });
 YEARS.forEach(buildYearPage);
 buildColumns();
+buildGakunen();
 buildHome();
 build404();
 buildSitemap();
@@ -339,7 +396,7 @@ for (const t of linkTargets) {
   const f = path.join(OUT, t, "index.html");
   if (!fs.existsSync(f)) throw new Error(`BROKEN LINK TARGET: ${t}`);
 }
-const expected = 1 + YEARS.length + 3;
+const expected = 1 + YEARS.length + 3 + 1; // home + year pages + 3 columns + gakunen
 if (emittedUrls.length !== expected) throw new Error(`page count ${emittedUrls.length} != ${expected}`);
 if (!emittedUrls.every(u => u.startsWith(BASE))) throw new Error("URL outside BASE");
 console.log(`OK: ${emittedUrls.length} pages + 404 + sitemap generated for ${TODAY_STR}`);
