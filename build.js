@@ -106,6 +106,7 @@ function writePage(relPath, html) {
 
 const columnLinks = depth => `<h2>あわせて読む</h2><div class="links">
 <a href="${rel(depth, "gakunen/")}">学年早見表 ${THIS_YEAR}年度</a>
+<a href="${rel(depth, "eto/")}">干支早見表</a>
 <a href="${rel(depth, "column/hayaumare/")}">早生まれとは？学年の区切り</a>
 <a href="${rel(depth, "column/kazoedoshi/")}">数え年と満年齢の違い</a>
 <a href="${rel(depth, "column/yakudoshi/")}">厄年早見表 ${THIS_YEAR}・${THIS_YEAR + 1}</a></div>`;
@@ -331,6 +332,59 @@ ${columnLinks(1)}`;
   }));
 }
 
+// ---- 干支早見表 ----
+function buildEto() {
+  const nextYear = THIS_YEAR + 1;
+  const nextEto = eto(nextYear);
+  const nextYomi = etoYomi(nextYear);
+
+  // 来年の干支の生まれ年一覧（新生児年を含む）。新生児年は生まれ年ページがまだ無いのでリンクなし
+  const targetYears = [];
+  for (let y = FIRST_YEAR; y <= nextYear; y++) if (eto(y) === nextEto) targetYears.push(y);
+  const targetRows = targetYears.slice().reverse().map(y => {
+    const ageLabel = y === nextYear ? `0歳（${y}年生まれ）` : `${nextYear - y}歳`;
+    const link = y <= THIS_YEAR ? `<a href="${rel(1, `y${y}/`)}">${y}年生まれのページ</a>` : "—";
+    return `<tr><td>${y}年（${esc(wareki(y))}）</td><td>${ageLabel}</td><td>${link}</td></tr>`;
+  }).join("\n");
+
+  // 十二支ごとの生まれ年一覧（子〜亥。並び順のみの定数で、判定はeto()に一本化）
+  const JUNI_ORDER = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
+  const signIndex = Object.fromEntries(JUNI_ORDER.map((s, i) => [s, i]));
+  const juniGroups = JUNI_ORDER.map(sign => ({ sign, years: [] }));
+  for (const y of YEARS) juniGroups[signIndex[eto(y)]].years.push(y);
+  const juniRows = juniGroups.map(g => {
+    const cls = g.sign === nextEto ? ' class="hl"' : "";
+    return `<tr${cls}><td>${g.sign}<small>（${etoYomi(g.years[0])}）</small></td><td style="white-space:normal;text-align:left">${g.years.join("・")}</td></tr>`;
+  }).join("\n");
+
+  const body = `
+<section class="feature"><p>今年（${THIS_YEAR}年）の干支は<strong>${eto(THIS_YEAR)}</strong>（${etoYomi(THIS_YEAR)}）、来年（${nextYear}年）は<strong>${nextEto}</strong>（${nextYomi}）。干支は12年で一巡し、自分の干支の年は「年男・年女」と呼ばれます。</p></section>
+<h2>来年 ${nextYear}年の${nextEto}年生まれ（年男・年女）</h2>
+<div class="tbl"><table>
+<thead><tr><th>生まれ年</th><th>${nextYear}年に迎える年齢</th><th>生まれ年ページ</th></tr></thead>
+<tbody>${targetRows}</tbody></table></div>
+<h2>十二支と生まれ年の早見表</h2>
+<div class="tbl"><table>
+<thead><tr><th>十二支</th><th>該当する生まれ年（${FIRST_YEAR}年〜${THIS_YEAR}年）</th></tr></thead>
+<tbody>${juniRows}</tbody></table></div>
+<div class="note"><p>干支の年の区切りについて、一般的なカレンダー上では1月1日で切り替わるものとして扱われます。一方で、旧暦の元日や節分（立春）を基準に干支が変わると考える伝統的な立場もあります。本ページの生まれ年は西暦の1月1日区切りで集計しています。</p></div>
+<section class="faq"><h2>よくある質問</h2><dl>
+<dt>${nextYear}年の干支は？</dt><dd>${nextEto}（${nextYomi}）年です。</dd>
+<dt>年男・年女とは？</dt><dd>自分の生まれ年と同じ干支の年を迎える人のことです。12年に一度巡ってきて、数え年で12・24・36…歳の年にあたります。</dd>
+<dt>干支と十二支の違いは？</dt><dd>厳密には「干支」は十干と十二支を組み合わせた60通りの呼び方ですが、一般には十二支（子・丑・寅…）を指して「干支」と呼ぶことが多いため、本ページもその慣用に従っています。</dd>
+</dl></section>
+${columnLinks(1)}`;
+
+  writePage("eto/index.html", shell({
+    path: "eto/", depth: 1,
+    title: "干支早見表｜今年・来年の干支と生まれ年",
+    desc: `${THIS_YEAR}年の干支は${eto(THIS_YEAR)}年、${nextYear}年は${nextEto}年です。${nextYear}年に年男・年女を迎える生まれ年の一覧に加え、${FIRST_YEAR}年〜${THIS_YEAR}年生まれの干支を十二支ごとにまとめた早見表を掲載。年賀状の準備や干支占いの下調べにご利用いただけます。`,
+    h1: "干支早見表｜今年・来年の干支と生まれ年",
+    breadcrumbs: [{ name: "年齢早見表", path: "" }, { name: "干支早見表", path: "eto/" }],
+    body,
+  }));
+}
+
 // ---- トップページ ----
 function buildHome() {
   const rows = [...YEARS].reverse().map(y => {
@@ -387,6 +441,7 @@ fs.rmSync(OUT, { recursive: true, force: true });
 YEARS.forEach(buildYearPage);
 buildColumns();
 buildGakunen();
+buildEto();
 buildHome();
 build404();
 buildSitemap();
@@ -396,7 +451,7 @@ for (const t of linkTargets) {
   const f = path.join(OUT, t, "index.html");
   if (!fs.existsSync(f)) throw new Error(`BROKEN LINK TARGET: ${t}`);
 }
-const expected = 1 + YEARS.length + 3 + 1; // home + year pages + 3 columns + gakunen
+const expected = 1 + YEARS.length + 3 + 1 + 1; // home + year pages + 3 columns + gakunen + eto
 if (emittedUrls.length !== expected) throw new Error(`page count ${emittedUrls.length} != ${expected}`);
 if (!emittedUrls.every(u => u.startsWith(BASE))) throw new Error("URL outside BASE");
 console.log(`OK: ${emittedUrls.length} pages + 404 + sitemap generated for ${TODAY_STR}`);
